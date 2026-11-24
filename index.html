@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Capital One Transfers Dashboard — Finns joint account</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #f4f6f9;
+      color: #0f172a;
+    }
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+<body class="min-h-screen antialiased selection:bg-sky-100 selection:text-sky-900">
+  <!-- Top Navigation / Header -->
+  <header class="bg-[#003a5d] text-white shadow-sm sticky top-0 z-30">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-10 h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0">
+            <i data-lucide="landmark" class="w-5 h-5 text-white"></i>
+          </div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <h1 class="text-lg sm:text-xl font-bold tracking-tight truncate">Capital One Transfers</h1>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-white/15 text-sky-100 border border-white/20">
+                Finns joint account
+              </span>
+            </div>
+            <p class="text-xs sm:text-sm text-sky-100/80 truncate">
+              csscherer@gmail.com &bull; Daily tracker since Nov 1, 2026
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap">
+          <button
+            id="btn-reset-data"
+            type="button"
+            class="hidden inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium bg-amber-400/20 hover:bg-amber-400/30 text-amber-100 border border-amber-300/30 transition"
+          >
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+            <span>Reset</span>
+          </button>
+
+          <a
+            href="https://docs.google.com/spreadsheets/d/11ZjsgiV0L5Ew849--TNh8JI7_zocr2H_1oc7QoMioXs/edit"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium bg-white/10 hover:bg-white/20 text-white border border-white/15 transition"
+          >
+            <i data-lucide="external-link" class="w-4 h-4"></i>
+            <span>Open Sheet</span>
+          </a>
+
+          <label
+            for="csv-import-input"
+            class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium bg-white/10 hover:bg-white/20 text-white border border-white/15 transition"
+          >
+            <i data-lucide="upload" class="w-4 h-4"></i>
+            <span>Import CSV</span>
+            <input id="csv-import-input" type="file" accept=".csv,text/csv" class="hidden" />
+          </label>
+
+          <button
+            id="btn-export-csv"
+            type="button"
+            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium bg-white/10 hover:bg-white/20 text-white border border-white/15 transition"
+          >
+            <i data-lucide="download" class="w-4 h-4"></i>
+            <span>Export</span>
+          </button>
+
+          <button
+            id="btn-add-transfer"
+            type="button"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-[#d03027] hover:bg-[#b82820] text-white shadow-sm transition"
+          >
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Add Transfer</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
+    <!-- Hero Running Total + Last 3 Deposits Banner -->
+    <section class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#003a5d] via-[#004879] to-[#0a2540] text-white shadow-lg border border-[#004879]/40 p-6 sm:p-8">
+      <div class="absolute -right-12 -top-12 w-56 h-56 rounded-full bg-white/5 pointer-events-none"></div>
+      <div class="absolute right-16 -bottom-16 w-40 h-40 rounded-full bg-[#d03027]/15 pointer-events-none"></div>
+      <div class="relative flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs font-semibold uppercase tracking-wider text-sky-100">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span id="hero-month-label">November 2026 Running Total</span>
+          </div>
+          <div id="hero-running-total" class="mt-3 text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight tabular-nums leading-none">
+            $1,508.95
+          </div>
+          <p id="hero-meta" class="mt-3 text-sm sm:text-base text-sky-100/85">
+            18 incoming deposits into <span class="font-semibold text-white">Finns joint account</span> &bull; Nov 2 – Nov 23, 2026
+          </p>
+        </div>
+
+        <div class="w-full lg:w-80 shrink-0">
+          <div class="text-[11px] font-semibold uppercase tracking-wider text-sky-200/80 mb-2">Last 3 Deposits</div>
+          <div id="hero-recent-deposits" class="space-y-1.5">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bottom Grid: Previous Month (Gray Box) + Fixed Bills -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-5 items-start">
+      <!-- Smaller Gray Box: Previous Month Total -->
+      <div class="bg-slate-200/80 border border-slate-300/90 rounded-2xl p-5 text-slate-800 shadow-xs">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-600">Previous Month</span>
+          <span class="w-7 h-7 rounded-lg bg-slate-300/70 text-slate-600 flex items-center justify-center">
+            <i data-lucide="calendar-clock" class="w-4 h-4"></i>
+          </span>
+        </div>
+        <div id="prev-month-name" class="mt-1 text-xs font-medium text-slate-500">October 2026</div>
+        <div id="prev-month-total" class="mt-2 text-2xl sm:text-3xl font-bold tabular-nums text-slate-700 min-h-[2.25rem]">
+          &mdash;
+        </div>
+        <p id="prev-month-sub" class="mt-2 text-xs text-slate-500">
+          Blank for now &bull; updates automatically next month
+        </p>
+      </div>
+
+      <!-- Fixed Bills Box -->
+      <div class="md:col-span-2 bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-slate-100">
+          <div class="flex items-center gap-2.5">
+            <span class="w-8 h-8 rounded-xl bg-rose-50 text-[#d03027] flex items-center justify-center shrink-0">
+              <i data-lucide="receipt" class="w-4 h-4"></i>
+            </span>
+            <div>
+              <h2 class="text-base font-semibold text-slate-900">Fixed Bills</h2>
+              <p class="text-xs text-slate-500">Recurring monthly obligations (separate from incoming total)</p>
+            </div>
+          </div>
+          <div class="text-left sm:text-right">
+            <div class="text-[11px] font-medium uppercase tracking-wider text-slate-400">Monthly Total</div>
+            <div id="bills-total" class="text-lg font-bold tabular-nums text-slate-900">$1,385.00</div>
+          </div>
+        </div>
+
+        <div id="bills-list" class="divide-y divide-slate-100 mt-1">
+          <!-- Populated dynamically -->
+        </div>
+
+        <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+          <span class="text-slate-500 font-medium">Remaining upcoming this month</span>
+          <span id="bills-upcoming-total" class="font-bold tabular-nums text-[#d03027]">$760.00</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Add Transfer Modal -->
+  <div id="add-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="text-base font-semibold text-slate-900">Add Transfer (Local Preview)</h3>
+        <button id="btn-close-modal" type="button" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <form id="add-transfer-form" class="p-5 space-y-4">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="input-date" class="block text-xs font-medium text-slate-700 mb-1">Date</label>
+            <input id="input-date" type="date" required class="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#003a5d]/25 focus:border-[#003a5d]" />
+          </div>
+          <div>
+            <label for="input-amount" class="block text-xs font-medium text-slate-700 mb-1">Amount ($)</label>
+            <input id="input-amount" type="number" step="0.01" min="0.01" placeholder="100.00" required class="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#003a5d]/25 focus:border-[#003a5d]" />
+          </div>
+        </div>
+        <div>
+          <label for="input-source" class="block text-xs font-medium text-slate-700 mb-1">From Account</label>
+          <select id="input-source" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#003a5d]/25 focus:border-[#003a5d]">
+            <option value="360 Checking...6206">360 Checking...6206</option>
+            <option value="360 Savings...3069">360 Savings...3069</option>
+            <option value="VENMO">VENMO</option>
+          </select>
+        </div>
+        <div>
+          <label for="input-memo" class="block text-xs font-medium text-slate-700 mb-1">Memo Notes (optional)</label>
+          <input id="input-memo" type="text" placeholder="e.g. groceries, savings" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#003a5d]/25 focus:border-[#003a5d]" />
+        </div>
+        <div>
+          <label for="input-conf" class="block text-xs font-medium text-slate-700 mb-1">Confirmation Number (optional)</label>
+          <input id="input-conf" type="text" placeholder="Auto-generated if blank" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#003a5d]/25 focus:border-[#003a5d]" />
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button id="btn-cancel-modal" type="button" class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition">
+            Cancel
+          </button>
+          <button type="submit" class="px-4 py-2 rounded-xl text-sm font-semibold bg-[#003a5d] hover:bg-[#002c47] text-white transition">
+            Add to Dashboard
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="hidden fixed bottom-5 right-5 z-50 bg-slate-900 text-white text-xs sm:text-sm font-medium px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2">
+    <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toast-message">Updated</span>
+  </div>
+
+  <script>
+    const INITIAL_TRANSFERS = [
+      { id: 1, date: '2026-11-02', amount: 100.00, memo: 'food', fromAccount: '360 Checking...6206', confirmation: 'MMNJUHTAP53K5QN' },
+      { id: 2, date: '2026-11-03', amount: 100.00, memo: 'Brazilian wax', fromAccount: '360 Checking...6206', confirmation: 'MMIVCFN8WDMGSVZ' },
+      { id: 3, date: '2026-11-06', amount: 100.00, memo: '', fromAccount: '360 Checking...6206', confirmation: 'MMBSAOVWPPXR7PD' },
+      { id: 4, date: '2026-11-08', amount: 150.00, memo: 'orlando', fromAccount: '360 Checking...6206', confirmation: 'MMBTOZCIJZKALC7' },
+      { id: 5, date: '2026-11-09', amount: 100.00, memo: '', fromAccount: '360 Savings...3069', confirmation: 'MM5JWR4V0DQNZS6' },
+      { id: 6, date: '2026-11-11', amount: 50.00, memo: '', fromAccount: '360 Savings...3069', confirmation: 'MM4IYG3NLZAWWRO' },
+      { id: 7, date: '2026-11-11', amount: 58.95, memo: 'INSTANT TRANSFER', fromAccount: 'VENMO', confirmation: 'MMA7GJEOGNCIFFT' },
+      { id: 8, date: '2026-11-12', amount: 50.00, memo: '', fromAccount: '360 Checking...6206', confirmation: 'MM53LM6SE1QIPZS' },
+      { id: 9, date: '2026-11-12', amount: 50.00, memo: '', fromAccount: '360 Checking...6206', confirmation: 'MMPR22GSI8LTXVV' },
+      { id: 10, date: '2026-11-13', amount: 100.00, memo: '', fromAccount: '360 Checking...6206', confirmation: 'MMXHVETC681YOL6' },
+      { id: 11, date: '2026-11-14', amount: 50.00, memo: '', fromAccount: '360 Checking...6206', confirmation: 'MM3QO4HCSX9BADJ' },
+      { id: 12, date: '2026-11-15', amount: 100.00, memo: 'cheese money', fromAccount: '360 Savings...3069', confirmation: 'MMLKYWUNCNPCHNS' },
+      { id: 13, date: '2026-11-16', amount: 100.00, memo: 'birthday', fromAccount: '360 Savings...3069', confirmation: 'MMX9XURCOH6ZV4O' },
+      { id: 14, date: '2026-11-16', amount: 100.00, memo: 'more', fromAccount: '360 Savings...3069', confirmation: 'MMIYA50URAVH1LE' },
+      { id: 15, date: '2026-11-18', amount: 100.00, memo: 'stuff', fromAccount: '360 Savings...3069', confirmation: 'MMFBC0YD8V7CCVN' },
+      { id: 16, date: '2026-11-19', amount: 100.00, memo: 'drive home', fromAccount: '360 Savings...3069', confirmation: 'MM0MWMQU56ILF2N' },
+      { id: 17, date: '2026-11-20', amount: 50.00, memo: '0 balance', fromAccount: '360 Checking...6206', confirmation: 'MMRBOBRPGRPAWMT' },
+      { id: 18, date: '2026-11-23', amount: 50.00, memo: 'golf range', fromAccount: '360 Checking...6206', confirmation: 'MM34HBGMJYL4T03' }
+    ];
+
+    const FIXED_BILLS = [
+      { id: 'frat-food', name: 'Frat Food Plan', dayOfMonth: 15, amount: 625.00 },
+      { id: 'frat-dues', name: 'Frat Dues', dayOfMonth: 29, amount: 760.00 }
+    ];
+
+    const state = {
+      transfers: INITIAL_TRANSFERS.map(t => ({ ...t })),
+      isModified: false
+    };
+
+    let toastTimer = null;
+
+    function formatCurrency(val) {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
+    }
+
+    function formatShortDate(iso) {
+      if (!iso) return '—';
+      const parts = iso.split('-');
+      if (parts.length !== 3) return iso;
+      const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function formatMonthYear(ym) {
+      const [y, m] = ym.split('-').map(Number);
+      const d = new Date(y, m - 1, 1);
+      return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
+
+    function getPreviousMonthKey(ym) {
+      const [y, m] = ym.split('-').map(Number);
+      const d = new Date(y, m - 2, 1);
+      const py = d.getFullYear();
+      const pm = String(d.getMonth() + 1).padStart(2, '0');
+      return `${py}-${pm}`;
+    }
+
+    function getOrdinalSuffix(day) {
+      if (day >= 11 && day <= 13) return `${day}th`;
+      switch (day % 10) {
+        case 1: return `${day}st`;
+        case 2: return `${day}nd`;
+        case 3: return `${day}rd`;
+        default: return `${day}th`;
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const msgEl = document.getElementById('toast-message');
+      msgEl.textContent = msg;
+      toast.classList.remove('hidden');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 2400);
+    }
+
+    function getActiveMonthKey() {
+      const months = state.transfers
+        .map(t => (t.date || '').slice(0, 7))
+        .filter(ym => /^\d{4}-\d{2}$/.test(ym))
+        .sort();
+      if (months.length > 0) return months[months.length - 1];
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    function renderHero() {
+      const activeMonth = getActiveMonthKey();
+      const monthTransfers = state.transfers.filter(t => (t.date || '').startsWith(activeMonth));
+      const total = monthTransfers.reduce((acc, t) => acc + t.amount, 0);
+      const count = monthTransfers.length;
+
+      const dates = monthTransfers.map(t => t.date).sort();
+      const firstDate = dates.length ? dates[0] : '';
+      const lastDate = dates.length ? dates[dates.length - 1] : '';
+
+      document.getElementById('hero-month-label').textContent = `${formatMonthYear(activeMonth)} Running Total`;
+      document.getElementById('hero-running-total').textContent = formatCurrency(total);
+
+      const spanText = firstDate && lastDate
+        ? (firstDate === lastDate ? formatShortDate(firstDate) : `${formatShortDate(firstDate)} – ${formatShortDate(lastDate)}, ${activeMonth.slice(0, 4)}`)
+        : 'No deposits yet';
+      document.getElementById('hero-meta').innerHTML =
+        `${count} incoming ${count === 1 ? 'deposit' : 'deposits'} into <span class="font-semibold text-white">Finns joint account</span> &bull; ${escapeHtml(spanText)}`;
+
+      const recentThree = [...state.transfers]
+        .sort((a, b) => (b.date.localeCompare(a.date)) || (b.id - a.id))
+        .slice(0, 3);
+      const recentContainer = document.getElementById('hero-recent-deposits');
+      if (recentThree.length === 0) {
+        recentContainer.innerHTML = `<div class="px-3 py-2 rounded-xl bg-white/10 border border-white/15 text-xs text-sky-100/80">No deposits recorded</div>`;
+      } else {
+        recentContainer.innerHTML = recentThree.map(t => `
+          <div class="flex items-center justify-between gap-3 px-3 py-1.5 rounded-xl bg-white/10 border border-white/15 text-xs">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="text-sky-100/80 tabular-nums shrink-0">${escapeHtml(formatShortDate(t.date))}</span>
+              <span class="text-white/90 truncate">${t.memo ? escapeHtml(t.memo) : '<span class="text-sky-200/50 italic">No memo</span>'}</span>
+            </div>
+            <span class="font-bold tabular-nums text-emerald-300 shrink-0">+${formatCurrency(t.amount)}</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    function renderPreviousMonth() {
+      const activeMonth = getActiveMonthKey();
+      const prevMonth = getPreviousMonthKey(activeMonth);
+      const prevTransfers = state.transfers.filter(t => (t.date || '').startsWith(prevMonth));
+
+      document.getElementById('prev-month-name').textContent = formatMonthYear(prevMonth);
+
+      const totalEl = document.getElementById('prev-month-total');
+      const subEl = document.getElementById('prev-month-sub');
+
+      if (prevTransfers.length === 0) {
+        totalEl.innerHTML = '&nbsp;';
+        subEl.textContent = 'Updates automatically next month';
+      } else {
+        const prevSum = prevTransfers.reduce((acc, t) => acc + t.amount, 0);
+        totalEl.textContent = formatCurrency(prevSum);
+        subEl.textContent = `${prevTransfers.length} ${prevTransfers.length === 1 ? 'deposit' : 'deposits'} in ${formatMonthYear(prevMonth)}`;
+      }
+    }
+
+    function renderFixedBills() {
+      const now = new Date();
+      const todayDay = now.getDate();
+      const currentMonthShort = now.toLocaleDateString('en-US', { month: 'short' });
+
+      const totalMonthly = FIXED_BILLS.reduce((acc, b) => acc + b.amount, 0);
+      let upcomingSum = 0;
+
+      const listEl = document.getElementById('bills-list');
+      listEl.innerHTML = FIXED_BILLS.map(bill => {
+        const isPassed = todayDay > bill.dayOfMonth;
+        const isToday = todayDay === bill.dayOfMonth;
+        if (!isPassed) upcomingSum += bill.amount;
+
+        let badgeHtml = '';
+        if (isPassed) {
+          badgeHtml = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-500">Passed (${currentMonthShort} ${bill.dayOfMonth})</span>`;
+        } else if (isToday) {
+          badgeHtml = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800">Due Today</span>`;
+        } else {
+          const daysLeft = bill.dayOfMonth - todayDay;
+          badgeHtml = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-[#d03027]">Due in ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}</span>`;
+        }
+
+        return `
+          <div class="py-3 flex items-center justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-sm font-semibold text-slate-900">${escapeHtml(bill.name)}</span>
+                ${badgeHtml}
+              </div>
+              <div class="text-xs text-slate-500 mt-0.5">Scheduled on the ${getOrdinalSuffix(bill.dayOfMonth)} of every month</div>
+            </div>
+            <div class="text-base font-bold tabular-nums text-slate-900 shrink-0">${formatCurrency(bill.amount)}</div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('bills-total').textContent = formatCurrency(totalMonthly);
+      document.getElementById('bills-upcoming-total').textContent = formatCurrency(upcomingSum);
+    }
+
+    function render() {
+      renderHero();
+      renderPreviousMonth();
+      renderFixedBills();
+
+      const resetBtn = document.getElementById('btn-reset-data');
+      resetBtn.classList.toggle('hidden', !state.isModified);
+
+      if (window.lucide) {
+        lucide.createIcons();
+      }
+    }
+
+    function parseCsvLine(line) {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === ',' && !inQuotes) {
+          result.push(current.trim());
+          current = '';
+        } else {
+          current += ch;
+        }
+      }
+      result.push(current.trim());
+      return result;
+    }
+
+    function handleCsvImport(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = String(e.target.result || '');
+        const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+        if (lines.length < 2) {
+          showToast('CSV appears empty');
+          return;
+        }
+        const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase());
+        const dateIdx = headers.findIndex(h => h.includes('date'));
+        const amtIdx = headers.findIndex(h => h.includes('amount'));
+        const memoIdx = headers.findIndex(h => h.includes('memo'));
+        const srcIdx = headers.findIndex(h => h.includes('from') || h.includes('account'));
+        const confIdx = headers.findIndex(h => h.includes('confirmation'));
+
+        if (dateIdx === -1 || amtIdx === -1) {
+          showToast('Missing Date or Amount columns');
+          return;
+        }
+
+        const parsed = [];
+        for (let i = 1; i < lines.length; i++) {
+          const cols = parseCsvLine(lines[i]);
+          const dateVal = cols[dateIdx] || '';
+          const amtNum = parseFloat(String(cols[amtIdx] || '').replace(/[$,]/g, ''));
+          if (!dateVal || Number.isNaN(amtNum)) continue;
+          parsed.push({
+            id: i,
+            date: dateVal,
+            amount: amtNum,
+            memo: memoIdx >= 0 ? (cols[memoIdx] || '') : '',
+            fromAccount: srcIdx >= 0 ? (cols[srcIdx] || '') : '',
+            confirmation: confIdx >= 0 ? (cols[confIdx] || `ROW-${i}`) : `ROW-${i}`
+          });
+        }
+
+        if (parsed.length === 0) {
+          showToast('No valid transfer rows found in CSV');
+          return;
+        }
+
+        state.transfers = parsed;
+        state.isModified = true;
+        render();
+        showToast(`Loaded ${parsed.length} transfers from CSV`);
+      };
+      reader.readAsText(file);
+    }
+
+    function exportCsv() {
+      const sorted = [...state.transfers].sort((a, b) => a.date.localeCompare(b.date));
+      const header = ['Date', 'Amount', 'Memo Notes', 'From Account', 'Confirmation Number'];
+      const rows = sorted.map(t => [
+        t.date,
+        t.amount.toFixed(2),
+        `"${String(t.memo || '').replace(/"/g, '""')}"`,
+        `"${String(t.fromAccount || '').replace(/"/g, '""')}"`,
+        t.confirmation
+      ].join(','));
+      const csv = [header.join(','), ...rows].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'capital_one_transfers_finns_joint.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast(`Exported ${sorted.length} transfers`);
+    }
+
+    function openAddModal() {
+      const modal = document.getElementById('add-modal');
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      document.getElementById('input-date').value = `${yyyy}-${mm}-${dd}`;
+      document.getElementById('input-amount').value = '';
+      document.getElementById('input-memo').value = '';
+      document.getElementById('input-conf').value = '';
+      modal.classList.remove('hidden');
+    }
+
+    function closeAddModal() {
+      document.getElementById('add-modal').classList.add('hidden');
+    }
+
+    document.getElementById('btn-reset-data').addEventListener('click', () => {
+      state.transfers = INITIAL_TRANSFERS.map(t => ({ ...t }));
+      state.isModified = false;
+      render();
+      showToast('Restored Google Sheet data');
+    });
+
+    document.getElementById('csv-import-input').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      handleCsvImport(file);
+      e.target.value = '';
+    });
+
+    document.getElementById('btn-export-csv').addEventListener('click', exportCsv);
+    document.getElementById('btn-add-transfer').addEventListener('click', openAddModal);
+    document.getElementById('btn-close-modal').addEventListener('click', closeAddModal);
+    document.getElementById('btn-cancel-modal').addEventListener('click', closeAddModal);
+
+    document.getElementById('add-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'add-modal') closeAddModal();
+    });
+
+    document.getElementById('add-transfer-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const dateVal = document.getElementById('input-date').value;
+      const amtVal = parseFloat(document.getElementById('input-amount').value);
+      const srcVal = document.getElementById('input-source').value;
+      const memoVal = document.getElementById('input-memo').value.trim();
+      let confVal = document.getElementById('input-conf').value.trim();
+
+      if (!dateVal || Number.isNaN(amtVal) || amtVal <= 0) {
+        showToast('Enter a valid date and amount');
+        return;
+      }
+      if (!confVal) {
+        confVal = 'MM' + Math.random().toString(36).substring(2, 13).toUpperCase();
+      }
+
+      const nextId = state.transfers.reduce((max, t) => Math.max(max, t.id), 0) + 1;
+      state.transfers.push({
+        id: nextId,
+        date: dateVal,
+        amount: amtVal,
+        memo: memoVal,
+        fromAccount: srcVal,
+        confirmation: confVal
+      });
+      state.isModified = true;
+      closeAddModal();
+      render();
+      showToast(`Added ${formatCurrency(amtVal)} deposit`);
+    });
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>
