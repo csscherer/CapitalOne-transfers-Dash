@@ -44,6 +44,15 @@
 
         <div class="flex items-center gap-2 flex-wrap">
           <button
+            id="btn-sync-live"
+            type="button"
+            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium bg-white/10 hover:bg-white/20 text-white border border-white/15 transition"
+          >
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+            <span>Sync</span>
+          </button>
+
+          <button
             id="btn-reset-data"
             type="button"
             class="hidden inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium bg-amber-400/20 hover:bg-amber-400/30 text-amber-100 border border-amber-300/30 transition"
@@ -100,15 +109,20 @@
       <div class="absolute right-16 -bottom-16 w-40 h-40 rounded-full bg-[#d03027]/15 pointer-events-none"></div>
       <div class="relative flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
         <div>
-          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs font-semibold uppercase tracking-wider text-sky-100">
-            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-            <span id="hero-month-label">November 2026 Running Total</span>
+          <div class="flex items-center gap-2 flex-wrap">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs font-semibold uppercase tracking-wider text-sky-100">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span id="hero-month-label">November 2026 Running Total</span>
+            </div>
+            <span id="sync-status-pill" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 border border-white/15 text-[11px] font-medium text-sky-100/90">
+              Cached (Nov 25)
+            </span>
           </div>
           <div id="hero-running-total" class="mt-3 text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight tabular-nums leading-none">
-            $1,508.95
+            $1,628.95
           </div>
           <p id="hero-meta" class="mt-3 text-sm sm:text-base text-sky-100/85">
-            18 incoming deposits into <span class="font-semibold text-white">Finns joint account</span> &bull; Nov 2 – Nov 23, 2026
+            20 incoming deposits into <span class="font-semibold text-white">Finns joint account</span> &bull; Nov 2 – Nov 25, 2026
           </p>
         </div>
 
@@ -243,8 +257,12 @@
       { id: 15, date: '2026-11-18', amount: 100.00, memo: 'stuff', fromAccount: '360 Savings...3069', confirmation: 'MMFBC0YD8V7CCVN' },
       { id: 16, date: '2026-11-19', amount: 100.00, memo: 'drive home', fromAccount: '360 Savings...3069', confirmation: 'MM0MWMQU56ILF2N' },
       { id: 17, date: '2026-11-20', amount: 50.00, memo: '0 balance', fromAccount: '360 Checking...6206', confirmation: 'MMRBOBRPGRPAWMT' },
-      { id: 18, date: '2026-11-23', amount: 50.00, memo: 'golf range', fromAccount: '360 Checking...6206', confirmation: 'MM34HBGMJYL4T03' }
+      { id: 18, date: '2026-11-23', amount: 50.00, memo: 'golf range', fromAccount: '360 Checking...6206', confirmation: 'MM34HBGMJYL4T03' },
+      { id: 19, date: '2026-11-24', amount: 60.00, memo: 'gas and golf', fromAccount: '360 Checking...6206', confirmation: 'MMQ64EWDJQ6TVAG' },
+      { id: 20, date: '2026-11-25', amount: 60.00, memo: 'sushi', fromAccount: '360 Checking...6206', confirmation: 'MMBICTOVVLUT4CS' }
     ];
+
+    const LIVE_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSko2nB82qm6tn-Z-NRKPOs13lKFwODmKx8JwdegA43hzupvq-ULiqPfJaaXKldqleR5nPGDYf38DTA/pub?gid=0&single=true&output=csv';
 
     const FIXED_BILLS = [
       { id: 'frat-food', name: 'Frat Food Plan', dayOfMonth: 15, amount: 625.00 },
@@ -461,55 +479,86 @@
       return result;
     }
 
+    function parseCsvText(text) {
+      const lines = String(text || '').split(/\r?\n/).filter(l => l.trim().length > 0);
+      if (lines.length < 2) {
+        return { error: 'CSV appears empty' };
+      }
+      const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase());
+      const dateIdx = headers.findIndex(h => h.includes('date'));
+      const amtIdx = headers.findIndex(h => h.includes('amount'));
+      const memoIdx = headers.findIndex(h => h.includes('memo'));
+      const srcIdx = headers.findIndex(h => h.includes('from') || h.includes('account'));
+      const confIdx = headers.findIndex(h => h.includes('confirmation'));
+
+      if (dateIdx === -1 || amtIdx === -1) {
+        return { error: 'Missing Date or Amount columns (check that Transfers tab is published)' };
+      }
+
+      const parsed = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cols = parseCsvLine(lines[i]);
+        const dateVal = cols[dateIdx] || '';
+        const amtNum = parseFloat(String(cols[amtIdx] || '').replace(/[$,]/g, ''));
+        if (!dateVal || Number.isNaN(amtNum)) continue;
+        parsed.push({
+          id: i,
+          date: dateVal,
+          amount: amtNum,
+          memo: memoIdx >= 0 ? (cols[memoIdx] || '') : '',
+          fromAccount: srcIdx >= 0 ? (cols[srcIdx] || '') : '',
+          confirmation: confIdx >= 0 ? (cols[confIdx] || `ROW-${i}`) : `ROW-${i}`
+        });
+      }
+
+      if (parsed.length === 0) {
+        return { error: 'No valid transfer rows found in CSV' };
+      }
+      return { rows: parsed };
+    }
+
     function handleCsvImport(file) {
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (e) => {
-        const text = String(e.target.result || '');
-        const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-        if (lines.length < 2) {
-          showToast('CSV appears empty');
+        const res = parseCsvText(e.target.result);
+        if (res.error) {
+          showToast(res.error);
           return;
         }
-        const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase());
-        const dateIdx = headers.findIndex(h => h.includes('date'));
-        const amtIdx = headers.findIndex(h => h.includes('amount'));
-        const memoIdx = headers.findIndex(h => h.includes('memo'));
-        const srcIdx = headers.findIndex(h => h.includes('from') || h.includes('account'));
-        const confIdx = headers.findIndex(h => h.includes('confirmation'));
-
-        if (dateIdx === -1 || amtIdx === -1) {
-          showToast('Missing Date or Amount columns');
-          return;
-        }
-
-        const parsed = [];
-        for (let i = 1; i < lines.length; i++) {
-          const cols = parseCsvLine(lines[i]);
-          const dateVal = cols[dateIdx] || '';
-          const amtNum = parseFloat(String(cols[amtIdx] || '').replace(/[$,]/g, ''));
-          if (!dateVal || Number.isNaN(amtNum)) continue;
-          parsed.push({
-            id: i,
-            date: dateVal,
-            amount: amtNum,
-            memo: memoIdx >= 0 ? (cols[memoIdx] || '') : '',
-            fromAccount: srcIdx >= 0 ? (cols[srcIdx] || '') : '',
-            confirmation: confIdx >= 0 ? (cols[confIdx] || `ROW-${i}`) : `ROW-${i}`
-          });
-        }
-
-        if (parsed.length === 0) {
-          showToast('No valid transfer rows found in CSV');
-          return;
-        }
-
-        state.transfers = parsed;
+        state.transfers = res.rows;
         state.isModified = true;
+        document.getElementById('sync-status-pill').textContent = 'Loaded from CSV';
         render();
-        showToast(`Loaded ${parsed.length} transfers from CSV`);
+        showToast(`Loaded ${res.rows.length} transfers from CSV`);
       };
       reader.readAsText(file);
+    }
+
+    async function syncFromSheet(isManual = false) {
+      const pill = document.getElementById('sync-status-pill');
+      pill.textContent = 'Syncing...';
+      try {
+        const sep = LIVE_CSV_URL.includes('?') ? '&' : '?';
+        const resp = await fetch(`${LIVE_CSV_URL}${sep}_t=${Date.now()}`, { cache: 'no-store' });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const text = await resp.text();
+        const res = parseCsvText(text);
+        if (res.error) {
+          pill.textContent = 'Cached (Nov 25)';
+          if (isManual) showToast(res.error);
+          return;
+        }
+        state.transfers = res.rows;
+        state.isModified = false;
+        const nowStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        pill.textContent = `Live • Synced ${nowStr}`;
+        render();
+        if (isManual) showToast(`Synced ${res.rows.length} transfers from Google Sheet`);
+      } catch (err) {
+        pill.textContent = 'Cached (Nov 25)';
+        if (isManual) showToast('Could not reach live sheet; showing cached data');
+      }
     }
 
     function exportCsv() {
@@ -605,8 +654,11 @@
       showToast(`Added ${formatCurrency(amtVal)} deposit`);
     });
 
-    // Initial render
+    document.getElementById('btn-sync-live').addEventListener('click', () => syncFromSheet(true));
+
+    // Initial render & automatic live sync
     render();
+    syncFromSheet(false);
   </script>
 </body>
 </html>
